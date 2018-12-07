@@ -1,0 +1,40 @@
+version: '3.2'
+services:
+    haproxy:
+        container_name: haproxy
+        image: haproxy
+        ports:
+            - "80:8080"
+        volumes:
+            - ./haproxy:/usr/local/etc/haproxy
+            
+    pwd:
+        # pwd daemon container always needs to be named this way
+        container_name: pwd
+        # use the latest golang image
+        image: lalyos/pwd
+        # go to the right place and starts the app
+        command: ./play-with-docker -save /pwd/sessions -name l2 -default-session-duration 8h -playground-domain pwd.lalyo.sh
+        volumes:
+            # since this app creates networks and launches containers, we need to talk to docker daemon
+            - /var/run/docker.sock:/var/run/docker.sock
+            # mount the box mounted shared folder to the container
+            - $GOPATH/src:/go/src
+            - sessions:/pwd
+    l2:
+        container_name: l2
+        # use the latest golang image
+        image: lalyos/pwd-l2
+        # go to the right place and starts the app
+        command: ./play-with-docker-l2 -ssh_key_path /etc/ssh/ssh_host_rsa_key -name l2 -save /pwd/networks
+        volumes:
+            - $GOPATH/src:/go/src
+            - /var/run/docker.sock:/var/run/docker.sock
+            - networks:/pwd
+        ports:
+            - "8022:22"
+            - "8053:53"
+            - "443:443"
+volumes:
+    sessions:
+    networks:
